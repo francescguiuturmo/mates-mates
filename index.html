@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Taules de multiplicar — Practica</title>
+  <style>
+    :root{--accent:#2b8cff;--danger:#e55;--ok:#2db34a}
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;margin:0;padding:20px;background:#f7fbff;color:#0b2740}
+    .wrap{max-width:900px;margin:0 auto}
+    header{margin-bottom:14px}
+    .time-controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+    .button-controls{display:flex;gap:12px;justify-content:center;margin-bottom:16px}
+    label{font-size:14px;display:block;text-align:center}
+    input[type=number]{width:100%;max-width:90px;padding:8px;border-radius:6px;border:1px solid #cfe3ff;background:#fff;margin-top:4px}
+    .tables{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0;max-width:280px;margin-left:auto;margin-right:auto}
+    .table-btn{width:44px;height:44px;border-radius:8px;border:2px solid #ddd;background:#fff;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;justify-self:center}
+    .table-btn.active{border-color:var(--accent);background:linear-gradient(180deg,#d9edff,#fff)}
+    .big{font-size:28px;font-weight:700;margin:12px 0}
+    .board{background:#fff;border-radius:12px;padding:18px;box-shadow:0 6px 18px rgba(15,40,80,0.06)}
+    .question{font-size:48px;font-weight:800; text-align:center;margin:10px 0}
+    .timers{display:flex;gap:16px;justify-content:center;margin-bottom:12px}
+    .timer{font-size:16px;padding:6px 10px;border-radius:8px;background:#f0f7ff;border:1px solid #e6f0ff}
+    .timer.danger{background:#ffe6e6;border-color:#ffcccc;color:var(--danger)}
+    .answer-row{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:6px}
+    input.answer{font-size:26px;padding:8px 12px;width:160px;border-radius:8px;border:1px solid #d0e8ff;text-align:center}
+    button.btn{padding:10px 14px;border-radius:8px;border:0;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+    button.btn.secondary{background:#f0f3f6;color:#073055}
+    .summary{margin-top:18px}
+    .result-list{margin-top:10px;max-height:260px;overflow:auto;padding:8px;border-radius:8px;border:1px dashed #e6eefc;background:#fbfeff}
+    .item{display:flex;justify-content:space-between;padding:6px 8px;border-bottom:1px solid #eef6ff}
+    .item.bad{background:#fff6f6;color:#4a1a16}
+    .correct{color:var(--ok);font-weight:700}
+    .wrong{color:var(--danger);font-weight:700}
+    .small{font-size:13px;color:#274359}
+    footer{margin-top:18px;display:flex;gap:12px;align-items:center;justify-content:center}
+    @media (max-width:520px){
+      .question{font-size:36px}
+      .answer{width:120px}
+      .time-controls{grid-template-columns:1fr;gap:8px;text-align:center}
+      .button-controls{flex-direction:column;align-items:center}
+      .button-controls .btn{width:200px}
+      .tables{max-width:240px;gap:6px}
+      .table-btn{width:38px;height:38px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="big">Practicar taules de multiplicar</h1>
+
+    <div class="board">
+      <header>
+        <div class="time-controls">
+          <label>Temps per pregunta (s)
+            <input id="perQuestion" type="number" min="3" value="10">
+          </label>
+          <label>Durada partida (min)
+            <input id="gameMinutes" type="number" min="1" value="2">
+          </label>
+        </div>
+        <div class="button-controls">
+          <button id="startBtn" class="btn">Iniciar</button>
+          <button id="stopBtn" class="btn secondary">Aturar</button>
+        </div>
+      </header>
+
+      <div>
+        <div class="small">Tria les taules (1–10) — prem per activar/desactivar</div>
+        <div class="tables" id="tables"></div>
+      </div>
+
+      <div id="gameArea" style="display:none">
+        <div class="timers">
+          <div class="timer">Partida: <span id="gameTimer">00:00</span></div>
+          <div class="timer">Pregunta: <span id="questionTimer">00</span>s</div>
+          <div class="timer small" id="progressInfo"></div>
+        </div>
+
+        <div class="question" id="questionText">—</div>
+
+        <div class="answer-row">
+          <input id="answerInput" class="answer" type="number" inputmode="numeric" autocomplete="off">
+          <button id="submitBtn" class="btn">Comprovar</button>
+        </div>
+      </div>
+
+      <div id="summaryArea" style="display:none" class="summary">
+        <h3>Resultats</h3>
+        <div class="small">Encerts: <span id="correctCount">0</span> — Errors: <span id="wrongCount">0</span></div>
+        <div class="result-list" id="resultList" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // Elements
+  const tablesEl = document.getElementById('tables');
+  const perQuestionEl = document.getElementById('perQuestion');
+  const gameMinutesEl = document.getElementById('gameMinutes');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const gameArea = document.getElementById('gameArea');
+  const questionText = document.getElementById('questionText');
+  const answerInput = document.getElementById('answerInput');
+  const submitBtn = document.getElementById('submitBtn');
+  const questionTimerEl = document.getElementById('questionTimer');
+  const gameTimerEl = document.getElementById('gameTimer');
+  const progressInfo = document.getElementById('progressInfo');
+  const summaryArea = document.getElementById('summaryArea');
+  const resultList = document.getElementById('resultList');
+  const correctCountEl = document.getElementById('correctCount');
+  const wrongCountEl = document.getElementById('wrongCount');
+
+  // State
+  let selectedTables = new Set([1,2,3,4,5,6,7,8,9,10]);
+  let attempts = [];
+  let current = null; // {a,b,correct}
+  let questionTimer = null;
+  let gameTimer = null;
+  let questionRemaining = 0;
+  let gameRemaining = 0;
+  let started = false;
+  let totalAsked = 0;
+
+  // Build table buttons
+  for (let i=1;i<=10;i++){
+    const btn = document.createElement('button');
+    btn.className = 'table-btn active';
+    btn.textContent = i;
+    btn.dataset.n = i;
+    btn.addEventListener('click', () => {
+      if (started) return;
+      const n = Number(btn.dataset.n);
+      if (selectedTables.has(n)) {
+        selectedTables.delete(n);
+        btn.classList.remove('active');
+      } else {
+        selectedTables.add(n);
+        btn.classList.add('active');
+      }
+    });
+    tablesEl.appendChild(btn);
+  }
+
+  function formatTimeSec(s){
+    if (s<0) s=0;
+    const mm = Math.floor(s/60).toString().padStart(2,'0');
+    const ss = Math.floor(s%60).toString().padStart(2,'0');
+    return mm+':'+ss;
+  }
+
+  function startGame(){
+    // Validate selections
+    if (selectedTables.size === 0){
+      // if none selected, select all
+      for (let i=1;i<=10;i++) selectedTables.add(i);
+      Array.from(tablesEl.children).forEach(b => b.classList.add('active'));
+    }
+    attempts = [];
+    totalAsked = 0;
+    started = true;
+    gameArea.style.display = '';
+    summaryArea.style.display = 'none';
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    Array.from(tablesEl.children).forEach(b => b.disabled = true);
+
+    // timers
+    questionRemaining = Math.max(3, Math.floor(Number(perQuestionEl.value) || 10));
+    gameRemaining = Math.max(10, Math.floor((Number(gameMinutesEl.value) || 2) * 60));
+
+    updateTimers();
+    nextQuestion();
+
+    // game timer tick every 200ms for smooth stop
+    gameTimer = setInterval(() => {
+      gameRemaining -= 0.2;
+      if (gameRemaining <= 0){
+        endGame();
+      } else {
+        updateTimers();
+      }
+    }, 200);
+  }
+
+  function updateTimers(){
+    gameTimerEl.textContent = formatTimeSec(Math.ceil(gameRemaining));
+    const qTimeLeft = Math.ceil(questionRemaining);
+    questionTimerEl.textContent = qTimeLeft;
+    
+    // Posar timer en vermell si queden menys de 3 segons
+    const questionTimerContainer = questionTimerEl.closest('.timer');
+    if (qTimeLeft <= 3 && qTimeLeft > 0) {
+      questionTimerContainer.classList.add('danger');
+    } else {
+      questionTimerContainer.classList.remove('danger');
+    }
+    
+    progressInfo.textContent = `Preguntes fetes: ${totalAsked}  — Taules: ${[...selectedTables].sort().join(',')}`;
+  }
+
+  function pickQuestion(){
+    const tables = [...selectedTables];
+    const a = tables[Math.floor(Math.random()*tables.length)];
+    const b = Math.floor(Math.random()*10) + 1;
+    return {a,b,correct:a*b};
+  }
+
+  function nextQuestion(){
+    clearInterval(questionTimer);
+    if (gameRemaining <= 0){
+      endGame();
+      return;
+    }
+    current = pickQuestion();
+    questionText.textContent = `${current.a} × ${current.b} = ?`;
+    answerInput.value = '';
+    answerInput.focus();
+    // per-question timer reset
+    questionRemaining = Math.max(3, Math.floor(Number(perQuestionEl.value) || 10));
+    updateTimers();
+
+    // tick every 200ms for smooth countdown
+    questionTimer = setInterval(() => {
+      questionRemaining -= 0.2;
+      if (questionRemaining <= 0){
+        clearInterval(questionTimer);
+        markAttempt(null, false, true); // timeout
+        setTimeout(() => { if (gameRemaining>0) nextQuestion(); else endGame(); }, 300);
+      } else {
+        updateTimers();
+      }
+    }, 200);
+  }
+
+  function markAttempt(userValue, correct, timeout=false){
+    clearInterval(questionTimer);
+    totalAsked++;
+    attempts.push({
+      a: current.a, b: current.b, correct: current.correct,
+      user: userValue, ok: correct, timeout: timeout, askedAt: Date.now()
+    });
+    updateTimers();
+  }
+
+  function submitAnswer(){
+    if (!started || !current) return;
+    const v = answerInput.value.trim();
+    const num = v === '' ? null : Number(v);
+    const isOk = (num !== null) && num === current.correct;
+    markAttempt(num, isOk, false);
+    // next after tiny delay
+    setTimeout(() => {
+      if (gameRemaining>0) nextQuestion(); else endGame();
+    }, 150);
+  }
+
+  function endGame(){
+    if (!started) return;
+    started = false;
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    Array.from(tablesEl.children).forEach(b => b.disabled = false);
+
+    clearInterval(gameTimer);
+    clearInterval(questionTimer);
+    questionTimer = gameTimer = null;
+    gameArea.style.display = 'none';
+    summaryArea.style.display = '';
+
+    // Treure estil de perill del timer
+    const questionTimerContainer = questionTimerEl.closest('.timer');
+    questionTimerContainer.classList.remove('danger');
+
+    // build summary
+    const correctCount = attempts.filter(a=>a.ok).length;
+    const wrongCount = attempts.length - correctCount;
+    correctCountEl.textContent = correctCount;
+    wrongCountEl.textContent = wrongCount;
+
+    resultList.innerHTML = '';
+    attempts.forEach((it, idx) => {
+      const div = document.createElement('div');
+      div.className = 'item' + (it.ok ? '' : ' bad');
+      const left = document.createElement('div');
+      left.innerHTML = `<strong>${it.a} × ${it.b} = ${it.correct}</strong>`;
+      const right = document.createElement('div');
+      if (it.ok) {
+        right.innerHTML = `<span class="correct">✔ ${it.user}</span>`;
+      } else if (it.timeout) {
+        right.innerHTML = `<span class="wrong">Temps</span> — <span class="small">solució: ${it.correct}</span>`;
+      } else {
+        right.innerHTML = `<span class="wrong">✖ ${it.user}</span> — <span class="small">solució: ${it.correct}</span>`;
+      }
+      div.appendChild(left);
+      div.appendChild(right);
+      resultList.appendChild(div);
+    });
+  }
+
+  function resetAll(){
+    // restore defaults and UI
+    clearInterval(questionTimer);
+    clearInterval(gameTimer);
+    questionTimer = gameTimer = null;
+    started = false;
+    attempts = [];
+    current = null;
+    selectedTables = new Set([1,2,3,4,5,6,7,8,9,10]);
+    Array.from(tablesEl.children).forEach(b => { b.classList.add('active'); b.disabled = false; });
+    gameArea.style.display = 'none';
+    summaryArea.style.display = 'none';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    perQuestionEl.value = 10;
+    gameMinutesEl.value = 2;
+    questionText.textContent = '—';
+    gameTimerEl.textContent = '00:00';
+    questionTimerEl.textContent = '00';
+    resultList.innerHTML = '';
+    
+    // Treure estil de perill del timer
+    const questionTimerContainer = questionTimerEl.closest('.timer');
+    if (questionTimerContainer) questionTimerContainer.classList.remove('danger');
+  }
+
+  // events
+  startBtn.addEventListener('click', startGame);
+  stopBtn.addEventListener('click', endGame);
+  submitBtn.addEventListener('click', submitAnswer);
+
+  answerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      submitAnswer();
+    }
+  });
+
+  // initial UI
+  resetAll();
+</script>
+</body>
+</html>

@@ -47,7 +47,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1 class="big">Practicar taules de multiplicar</h1>
+    <h1 class="big">Saps multiplicar?</h1>
 
     <div class="board">
       <header>
@@ -197,7 +197,7 @@
       questionTimerContainer.classList.remove('danger');
     }
     
-    progressInfo.textContent = `Preguntes fetes: ${totalAsked}  — Taules: ${[...selectedTables].sort().join(',')}`;
+    progressInfo.textContent = `Preguntes fetes: ${totalAsked} (Encerts: ${attempts.filter(a=>a.ok).length}, Errors: ${attempts.filter(a=>!a.ok && !a.timeout).length}, Temps: ${attempts.filter(a=>a.timeout).length})`;
   }
 
   function pickQuestion(){
